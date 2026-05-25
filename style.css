@@ -1,0 +1,427 @@
+/* 기본 리셋 */
+* { box-sizing: border-box; margin: 0; padding: 0; }
+
+:root {
+  --bg: #fafaf8;
+  --surface: #ffffff;
+  --text: #1a1a1a;
+  --text-muted: #666;
+  --border: #e5e5e5;
+  --primary: #0a3d62;
+  --primary-hover: #0c4a78;
+  --accent-yellow: #fff8e1;
+  --accent-yellow-border: #f0a500;
+  --accent-green: #e8f5e9;
+  --accent-green-border: #2e7d32;
+  --accent-blue: #f6f8fa;
+  --accent-blue-border: #b0b8c0;
+  --shadow: 0 1px 3px rgba(0,0,0,0.05);
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    --bg: #0f0f0f;
+    --surface: #1a1a1a;
+    --text: #f0f0f0;
+    --text-muted: #999;
+    --border: #2a2a2a;
+    --primary: #4a9eff;
+    --primary-hover: #6bb0ff;
+    --accent-yellow: #2a2410;
+    --accent-blue: #1a1f24;
+    --accent-green: #182218;
+  }
+}
+
+body {
+  font-family: -apple-system, BlinkMacSystemFont, "Apple SD Gothic Neo", "Noto Sans KR", "Segoe UI", sans-serif;
+  background: var(--bg);
+  color: var(--text);
+  line-height: 1.6;
+  -webkit-font-smoothing: antialiased;
+}
+
+#app {
+  max-width: 760px;
+  margin: 0 auto;
+  padding: 20px;
+  min-height: 100vh;
+}
+
+/* 헤더 */
+header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 16px 0 24px;
+  border-bottom: 1px solid var(--border);
+  margin-bottom: 24px;
+}
+
+header h1 {
+  font-size: 22px;
+  font-weight: 700;
+}
+
+.header-actions button {
+  background: none;
+  border: 1px solid var(--border);
+  padding: 8px 12px;
+  border-radius: 8px;
+  cursor: pointer;
+  font-size: 16px;
+}
+
+.header-actions button:hover {
+  background: var(--surface);
+}
+
+/* 화면 공통 */
+.screen {
+  animation: fadeIn 0.3s ease;
+}
+
+@keyframes fadeIn {
+  from { opacity: 0; transform: translateY(8px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+/* 온보딩 */
+.welcome {
+  text-align: center;
+  padding: 60px 20px;
+}
+
+.welcome h2 {
+  font-size: 28px;
+  margin-bottom: 16px;
+}
+
+.welcome p {
+  color: var(--text-muted);
+  margin-bottom: 32px;
+  font-size: 16px;
+}
+
+/* 인터뷰 */
+.progress {
+  margin-bottom: 24px;
+}
+
+#progress-text {
+  font-size: 14px;
+  color: var(--text-muted);
+  font-weight: 600;
+}
+
+.progress-bar {
+  height: 4px;
+  background: var(--border);
+  border-radius: 2px;
+  margin-top: 8px;
+  overflow: hidden;
+}
+
+#progress-fill {
+  height: 100%;
+  background: var(--primary);
+  width: 10%;
+  transition: width 0.3s ease;
+}
+
+.question {
+  margin-bottom: 32px;
+}
+
+.question label {
+  display: block;
+  font-size: 18px;
+  font-weight: 600;
+  margin-bottom: 12px;
+  line-height: 1.4;
+}
+
+textarea, input[type="text"] {
+  width: 100%;
+  padding: 14px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: var(--surface);
+  color: var(--text);
+  font-size: 15px;
+  font-family: inherit;
+  resize: vertical;
+}
+
+textarea:focus, input:focus {
+  outline: none;
+  border-color: var(--primary);
+}
+
+.interview-actions {
+  display: flex;
+  gap: 12px;
+  justify-content: flex-end;
+}
+
+/* 버튼 */
+button {
+  padding: 12px 24px;
+  border: 1px solid var(--border);
+  background: var(--surface);
+  color: var(--text);
+  border-radius: 8px;
+  cursor: pointer;
+  font-size: 15px;
+  font-weight: 500;
+  transition: all 0.15s ease;
+}
+
+button:hover:not(:disabled) {
+  background: var(--bg);
+}
+
+button:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
+.primary-btn {
+  background: var(--primary);
+  color: white;
+  border-color: var(--primary);
+}
+
+.primary-btn:hover:not(:disabled) {
+  background: var(--primary-hover);
+  border-color: var(--primary-hover);
+}
+
+/* 컨텍스트 확인 */
+#context-summary {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  padding: 24px;
+  margin: 24px 0;
+}
+
+#context-summary .summary-item {
+  display: flex;
+  padding: 8px 0;
+  border-bottom: 1px solid var(--border);
+}
+
+#context-summary .summary-item:last-child {
+  border-bottom: none;
+}
+
+#context-summary .summary-label {
+  font-weight: 600;
+  width: 140px;
+  flex-shrink: 0;
+  color: var(--text-muted);
+}
+
+#context-summary .summary-value {
+  flex: 1;
+}
+
+/* 메인 화면 */
+.main-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  margin-bottom: 32px;
+  gap: 16px;
+}
+
+.main-header h2 {
+  font-size: 24px;
+  margin-bottom: 4px;
+}
+
+.main-header p {
+  color: var(--text-muted);
+  font-size: 14px;
+}
+
+/* 로딩 */
+#loading {
+  text-align: center;
+  padding: 60px 0;
+}
+
+.spinner {
+  width: 40px;
+  height: 40px;
+  border: 3px solid var(--border);
+  border-top-color: var(--primary);
+  border-radius: 50%;
+  margin: 0 auto 16px;
+  animation: spin 0.8s linear infinite;
+}
+
+@keyframes spin {
+  to { transform: rotate(360deg); }
+}
+
+#loading p {
+  color: var(--text-muted);
+}
+
+/* 브리핑 출력 */
+#briefing-output {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  padding: 32px;
+  margin-bottom: 32px;
+  box-shadow: var(--shadow);
+}
+
+#briefing-output:empty {
+  display: none;
+}
+
+#briefing-output h1 {
+  font-size: 24px;
+  border-bottom: 2px solid var(--text);
+  padding-bottom: 8px;
+  margin-bottom: 16px;
+}
+
+#briefing-output h2 {
+  font-size: 18px;
+  color: var(--primary);
+  border-left: 4px solid var(--primary);
+  padding-left: 12px;
+  margin: 24px 0 12px;
+}
+
+#briefing-output h3 {
+  font-size: 15px;
+  margin: 16px 0 8px;
+  font-weight: 600;
+}
+
+#briefing-output p {
+  margin: 8px 0;
+  font-size: 14.5px;
+}
+
+#briefing-output ul, #briefing-output ol {
+  margin: 8px 0 8px 20px;
+}
+
+#briefing-output li {
+  margin: 4px 0;
+  font-size: 14.5px;
+}
+
+#briefing-output blockquote {
+  border-left: 4px solid var(--accent-yellow-border);
+  background: var(--accent-yellow);
+  padding: 12px 16px;
+  margin: 12px 0;
+  border-radius: 4px;
+}
+
+#briefing-output table {
+  width: 100%;
+  border-collapse: collapse;
+  margin: 12px 0;
+  font-size: 13.5px;
+}
+
+#briefing-output th, #briefing-output td {
+  border: 1px solid var(--border);
+  padding: 8px 12px;
+  text-align: left;
+}
+
+#briefing-output th {
+  background: var(--accent-blue);
+  font-weight: 600;
+}
+
+#briefing-output strong {
+  color: var(--primary);
+}
+
+#briefing-output hr {
+  border: none;
+  border-top: 1px solid var(--border);
+  margin: 24px 0;
+}
+
+/* 피드백 */
+#feedback-section {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  padding: 24px;
+}
+
+#feedback-section h3 {
+  font-size: 16px;
+  margin-bottom: 8px;
+}
+
+.hint {
+  color: var(--text-muted);
+  font-size: 13px;
+  margin-bottom: 16px;
+}
+
+.chat-box {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+#chat-messages {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  max-height: 300px;
+  overflow-y: auto;
+}
+
+.chat-msg {
+  padding: 10px 14px;
+  border-radius: 12px;
+  font-size: 14px;
+  max-width: 80%;
+}
+
+.chat-msg.user {
+  background: var(--primary);
+  color: white;
+  align-self: flex-end;
+}
+
+.chat-msg.assistant {
+  background: var(--bg);
+  color: var(--text);
+  align-self: flex-start;
+  border: 1px solid var(--border);
+}
+
+.chat-input {
+  display: flex;
+  gap: 8px;
+}
+
+.chat-input input {
+  flex: 1;
+}
+
+/* 모바일 */
+@media (max-width: 600px) {
+  #app { padding: 12px; }
+  .main-header { flex-direction: column; }
+  .main-header button { width: 100%; }
+  #briefing-output { padding: 20px; }
+  header h1 { font-size: 18px; }
+}
