@@ -1,7 +1,9 @@
 // 의존성(MCP SDK) 없이 핵심 로직만 검증하는 자체 테스트.
 import { getAll, byCategory } from "./questions.js";
 import { scoreSession } from "./scoring.js";
-import { TESTS, listTests, normalizeResponse } from "./assessments/index.js";
+import { TESTS, listTests, normalizeResponse, neutralValue } from "./assessments/index.js";
+import digitspan from "./assessments/digitspan.js";
+import creativity from "./assessments/creativity.js";
 
 let pass = 0, fail = 0;
 function assert(cond, msg) {
@@ -68,28 +70,60 @@ const r4 = scoreSession(half);
 assert(r4.estimatedIQ >= 85 && r4.estimatedIQ <= 122, `절반 평균대 (got ${r4.estimatedIQ})`);
 assert(r4.avgTimeSec === 10, `평균 시간 집계 (got ${r4.avgTimeSec})`);
 
-// ============ 자가 테스트(Big Five / MBTI / EQ / 스트레스) ============
-assert(Object.keys(TESTS).length === 4, "자가 테스트 4종");
-assert(listTests().length === 4, "listTests 4개");
+// ============ 자가 테스트(11종: 성격·정서·관계·상식) ============
+assert(Object.keys(TESTS).length === 11, `자가 테스트 11종 (got ${Object.keys(TESTS).length})`);
+assert(listTests().length === 11, "listTests 11개");
 
 for (const t of Object.values(TESTS)) {
-  assert(["likert5", "ab"].includes(t.scale), `${t.id}: scale 유효`);
-  assert(t.items.length >= 10, `${t.id}: 문항 10개 이상`);
+  assert(["likert5", "ab", "quiz"].includes(t.scale), `${t.id}: scale 유효`);
+  assert(t.items.length >= 8, `${t.id}: 문항 8개 이상`);
   assert(typeof t.score === "function", `${t.id}: score 함수`);
   // 응답 검증
   if (t.scale === "likert5") {
     assert(normalizeResponse(t, "3") === 3, `${t.id}: 리커트 정규화`);
     assert(normalizeResponse(t, "9") === null, `${t.id}: 리커트 범위 밖 거부`);
-  } else {
+  } else if (t.scale === "ab") {
     assert(normalizeResponse(t, "a") === "A", `${t.id}: AB 정규화`);
     assert(normalizeResponse(t, "C") === null, `${t.id}: AB 범위 밖 거부`);
+  } else {
+    // quiz
+    assert(normalizeResponse(t, "b", 0) === "B", `${t.id}: 퀴즈 정규화`);
+    assert(t.items.every((it) => Array.isArray(it.options) && it.options[it.answer] != null), `${t.id}: 퀴즈 정답 유효`);
   }
   // 극단 응답 채점 동작 확인
-  const allMax = t.items.map(() => (t.scale === "ab" ? "A" : 5));
-  const res = t.score(allMax);
+  const max = t.items.map((it, i) =>
+    t.scale === "ab" ? "A" : t.scale === "quiz" ? ["A", "B", "C", "D"][it.answer] : 5
+  );
+  const res = t.score(max);
   assert(typeof res.headline === "string" && Array.isArray(res.lines), `${t.id}: 결과 구조`);
   assert(res.lines.join("").length > 0, `${t.id}: 결과 내용 존재`);
+  // 부분 채점(중립값 채움)이 깨지지 않는지
+  const partial = t.items.map(() => neutralValue(t));
+  assert(typeof t.score(partial).headline === "string", `${t.id}: 중립값 채점 동작`);
 }
+
+// trivia: 전부 정답이면 만점
+const tv = TESTS.trivia.score(TESTS.trivia.items.map((it) => ["A", "B", "C", "D"][it.answer]));
+assert(tv.raw.pct === 100, `상식퀴즈 전부정답 100% (got ${tv.raw.pct})`);
+
+// 에니어그램/러브랭귀지/애착: 결과에 type/primary 존재
+assert(TESTS.enneagram.score(TESTS.enneagram.items.map(() => 5)).raw.type >= 1, "에니어그램 type");
+assert(typeof TESTS.lovelang.score(TESTS.lovelang.items.map(() => 5)).raw.primary === "string", "러브랭귀지 primary");
+assert(["secure", "anxious", "avoidant", "fearful"].includes(
+  TESTS.attachment.score(TESTS.attachment.items.map(() => 5)).raw.type), "애착유형 type");
+
+// ============ 작업기억력(Digit Span) ============
+assert(digitspan.makeSequence(5).length === 5, "digitspan 길이");
+assert(/^\d+$/.test(digitspan.makeSequence(7)), "digitspan 숫자만");
+assert(digitspan.isCorrect("12345", "1 2 3 4 5"), "digitspan 공백 허용 정답");
+assert(!digitspan.isCorrect("12345", "12354"), "digitspan 순서 오답");
+assert(digitspan.evaluate(8).level === "우수" || digitspan.evaluate(8).span === 8, "digitspan 평가");
+
+// ============ 창의력(Divergent Thinking) ============
+const cr = creativity.evaluate("문 받침, 무기, 화분, 의자, 운동기구, 책꽂이, 악기");
+assert(cr.fluency === 7, `창의력 유창성 (got ${cr.fluency})`);
+assert(creativity.evaluate("").fluency === 0, "창의력 빈 입력 0");
+assert(creativity.PROMPTS.length >= 3, "창의력 프롬프트 3개 이상");
 
 // Big Five: 역채점 고려한 '특성 최대' 응답 → 모든 특성 100%
 const bf = TESTS.bigfive.score(TESTS.bigfive.items.map((it) => (it.reverse ? 1 : 5)));

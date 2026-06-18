@@ -23,11 +23,14 @@ import { randomUUID } from "node:crypto";
 
 import { getAll, byCategory } from "./questions.js";
 import { scoreSession } from "./scoring.js";
-import { TESTS, listTests, getTest, formatItem, normalizeResponse } from "./assessments/index.js";
+import { TESTS, listTests, getTest, formatItem, normalizeResponse, neutralValue } from "./assessments/index.js";
+import digitspan from "./assessments/digitspan.js";
+import creativity from "./assessments/creativity.js";
 
 const ALL = getAll();
 const sessions = new Map();        // IQ 테스트 세션
 const surveys = new Map();         // 자가 테스트(설문) 세션
+const memTests = new Map();        // 작업기억력(숫자 외우기) 세션
 const LETTERS = ["A", "B", "C", "D"];
 
 function shuffle(arr) {
@@ -332,9 +335,10 @@ server.tool(
     if (session.finished)
       return { content: [{ type: "text", text: "이미 종료된 테스트입니다.\n\n" + surveyResult(test, session) }] };
 
-    const val = normalizeResponse(test, response);
+    const val = normalizeResponse(test, response, session.cursor);
     if (val == null) {
-      const hint = test.scale === "ab" ? "'A' 또는 'B'" : "'1'~'5'";
+      const hint =
+        test.scale === "ab" ? "'A' 또는 'B'" : test.scale === "quiz" ? "'A'~'D'" : "'1'~'5'";
       return errText(`응답이 올바르지 않습니다. ${hint} 중 하나로 답하세요.`);
     }
 
@@ -381,9 +385,9 @@ server.tool(
 );
 
 function surveyResult(test, session) {
-  // 미응답 문항은 중립값(리커트 3, MBTI 'A')으로 채워 부분 채점
+  // 미응답 문항은 중립/무효값으로 채워 부분 채점
   const filled = test.items.map((_, i) =>
-    session.answers[i] != null ? session.answers[i] : test.scale === "ab" ? "A" : 3
+    session.answers[i] != null ? session.answers[i] : neutralValue(test)
   );
   const answeredCount = session.answers.filter((a) => a != null).length;
   const r = test.score(filled);
@@ -394,8 +398,126 @@ function surveyResult(test, session) {
   return [r.headline, "─".repeat(34), ...r.lines, note].join("\n");
 }
 
+// =====================================================================
+//  작업기억력 — 숫자 외우기 (Digit Span, 적응형 성능 검사)
+// =====================================================================
+
+function memPrompt(session) {
+  return [
+    `🧠 작업기억력 테스트 — ${session.len}자리 (${session.tryNo}/${digitspan.TRIES_PER_LEN}번째 시도)`,
+    "",
+    `다음 숫자를 외우세요:   ${session.seq.split("").join(" ")}`,
+    "",
+    `외운 뒤 memory_answer(session_id="${session.id}", digits="순서대로 입력")`,
+    `(예: "${session.seq}")  · 최고 기록: ${session.best}자리`,
+  ].join("\n");
+}
+
+server.tool(
+  "start_memory_test",
+  "작업기억력(숫자 외우기/Digit Span) 테스트를 시작합니다. 점점 길어지는 숫자열을 순서대로 기억해 입력하세요.",
+  { name: z.string().optional().describe("응시자 이름(선택)") },
+  async ({ name }) => {
+    const id = randomUUID().slice(0, 8);
+    const session = {
+      id, name: name ?? "응시자",
+      len: digitspan.START_LEN, tryNo: 1, best: 0, finished: false,
+      seq: digitspan.makeSequence(digitspan.START_LEN),
+    };
+    memTests.set(id, session);
+    return {
+      content: [
+        {
+          type: "text",
+          text: `🧠 작업기억력 테스트 시작 (${session.name}님)\n세션 ID: ${id}\n\n` + memPrompt(session),
+        },
+      ],
+    };
+  }
+);
+
+server.tool(
+  "memory_answer",
+  "작업기억력 테스트에서 외운 숫자를 입력합니다. 맞히면 한 자리 늘고, 같은 길이를 연속으로 틀리면 종료됩니다.",
+  {
+    session_id: z.string().describe("start_memory_test 가 반환한 세션 ID"),
+    digits: z.string().describe("외운 숫자를 순서대로 (공백/쉼표 무방)"),
+  },
+  async ({ session_id, digits }) => {
+    const s = memTests.get(session_id);
+    if (!s) return errText(`세션 '${session_id}' 없음. start_memory_test 로 시작하세요.`);
+    if (s.finished) return { content: [{ type: "text", text: memResult(s) }] };
+
+    if (digitspan.isCorrect(s.seq, digits)) {
+      s.best = s.len;
+      if (s.len >= digitspan.MAX_LEN) {
+        s.finished = true;
+        return { content: [{ type: "text", text: "🎉 최대 길이까지 모두 성공!\n\n" + memResult(s) }] };
+      }
+      s.len += 1; s.tryNo = 1; s.seq = digitspan.makeSequence(s.len);
+      return { content: [{ type: "text", text: `⭕ 정답! 한 자리 늘립니다.\n\n` + memPrompt(s) }] };
+    }
+    // 오답
+    if (s.tryNo >= digitspan.TRIES_PER_LEN) {
+      s.finished = true;
+      return { content: [{ type: "text", text: `❌ 아쉬워요. 정답은 ${s.seq} 였어요.\n\n` + memResult(s) }] };
+    }
+    s.tryNo += 1; s.seq = digitspan.makeSequence(s.len);
+    return {
+      content: [{ type: "text", text: `❌ 틀렸어요(정답 ${s.seq}). 같은 길이로 한 번 더!\n\n` + memPrompt(s) }],
+    };
+  }
+);
+
+function memResult(s) {
+  const r = digitspan.evaluate(s.best);
+  return [
+    "🧠 작업기억력 결과",
+    "─".repeat(34),
+    `숫자 폭(Digit Span): ${r.span}자리  ·  ${r.level}`,
+    `  ${r.msg}`,
+    "  (참고: 성인 평균 숫자 폭은 약 7±2자리)",
+  ].join("\n");
+}
+
+// =====================================================================
+//  창의력 — 확산적 사고 / 대체 용도 과제 (Divergent Thinking)
+// =====================================================================
+
+server.tool(
+  "creativity_prompt",
+  "창의력(확산적 사고) 과제를 하나 제시합니다. 한 사물의 색다른 용도를 최대한 많이 떠올려 creativity_score 로 제출하세요.",
+  {},
+  async () => {
+    const p = creativity.pickPrompt();
+    return {
+      content: [
+        {
+          type: "text",
+          text:
+            `🎨 창의력 테스트 — 확산적 사고\n\n${p.text}\n\n` +
+            `떠오르는 아이디어를 쉼표(,)나 줄바꿈으로 구분해 적은 뒤\n` +
+            `creativity_score(answers="...") 로 제출하세요. 정답은 없습니다 — 많고 엉뚱할수록 좋아요!`,
+        },
+      ],
+    };
+  }
+);
+
+server.tool(
+  "creativity_score",
+  "창의력 과제 응답을 채점합니다. 유창성(아이디어 수)·유연성(범주 다양성)을 평가합니다.",
+  { answers: z.string().describe("떠올린 용도들 (쉼표/줄바꿈 구분)") },
+  async ({ answers }) => {
+    const r = creativity.evaluate(answers);
+    return {
+      content: [{ type: "text", text: ["🎨 창의력(확산적 사고) 결과", "─".repeat(34), ...r.lines].join("\n") }],
+    };
+  }
+);
+
 const transport = new StdioServerTransport();
 await server.connect(transport);
 console.error(
-  `[iq-test] MCP server running on stdio (IQ ${ALL.length}문항 + 자가테스트 ${Object.keys(TESTS).length}종)`
+  `[iq-test] MCP server running on stdio (IQ ${ALL.length}문항 + 자가테스트 ${Object.keys(TESTS).length}종 + 작업기억력/창의력)`
 );

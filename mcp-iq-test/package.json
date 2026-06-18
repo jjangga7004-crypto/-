@@ -9,7 +9,8 @@
   "main": "server.js",
   "scripts": {
     "start": "node server.js",
-    "test": "node selftest.js"
+    "test": "node selftest.js",
+    "web": "node web/serve.js"
   },
   "engines": {
     "node": ">=18"
