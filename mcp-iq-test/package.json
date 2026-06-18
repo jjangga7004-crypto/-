@@ -1,0 +1,21 @@
+{
+  "name": "mcp-iq-test",
+  "version": "1.0.0",
+  "description": "MCP server providing an interactive IQ test tool (stdio).",
+  "type": "module",
+  "bin": {
+    "mcp-iq-test": "server.js"
+  },
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js",
+    "test": "node selftest.js"
+  },
+  "engines": {
+    "node": ">=18"
+  },
+  "dependencies": {
+    "@modelcontextprotocol/sdk": "^1.29.0",
+    "zod": "^3.23.8"
+  }
+}
