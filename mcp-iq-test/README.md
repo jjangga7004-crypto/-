@@ -1,8 +1,15 @@
-# 🧠 MCP IQ Test Server
+# 🧠 MCP IQ & Self-Test Server
 
-MCP(Model Context Protocol)로 붙어서 **IQ 테스트를 진행**할 수 있는 도구 모음입니다.
-Claude Desktop, Claude Code 등 MCP 클라이언트에 stdio 로 연결하면, 대화 중에
-도구를 호출해 문제를 풀고 추정 IQ 점수를 받을 수 있습니다.
+MCP(Model Context Protocol)로 붙어서 **IQ 테스트 + 여러 자가 테스트**를 진행할 수 있는
+도구 모음입니다. Claude Desktop, Claude Code 등 MCP 클라이언트에 stdio 로 연결하면,
+대화 중에 도구를 호출해 문제를 풀고 점수·유형 결과를 받을 수 있습니다.
+
+수록 테스트:
+- 🧠 **IQ 테스트** (45문항, 도형 SVG·시간제한 포함)
+- 🧬 **Big Five 성격 5요인 (OCEAN)** — 5개 특성 %
+- 🎭 **MBTI 성격유형** — 16유형 판정
+- ❤️ **EQ 감성지능** — 5영역 점수
+- 🌡️ **스트레스 / 번아웃 지수** — 자가 체크 (의학 진단 아님)
 
 ## 제공 도구 (Tools)
 
@@ -25,6 +32,27 @@ Claude Desktop, Claude Code 등 MCP 클라이언트에 stdio 로 연결하면, �
 ### 🖼 도형 문제 (figural)
 - 도형 문제는 결과에 SVG 이미지를 함께 반환합니다 (`image/svg+xml`).
 - 이미지 콘텐츠를 렌더링하지 않는 클라이언트를 위해 SVG 원본 텍스트도 함께 첨부됩니다.
+
+## 🧪 자가 테스트 도구 (성격·정서·스트레스)
+
+IQ 외에 4가지 설문형 자가 테스트를 제공합니다.
+
+| 도구 | 설명 |
+|------|------|
+| `list_self_tests` | 사용 가능한 자가 테스트 목록을 보여줍니다. |
+| `start_self_test` | 테스트를 시작합니다. `test_id`(bigfive·mbti·eq·stress), `name`(선택). |
+| `answer_self_test` | 문항에 답합니다. 리커트형은 `1~5`, MBTI는 `A`/`B`. |
+| `self_test_status` | 진행률과 현재 문항을 보여줍니다. |
+
+| test_id | 테스트 | 문항 | 응답 | 결과 |
+|---------|--------|------|------|------|
+| `bigfive` | Big Five (OCEAN) | 20 | 1~5 | 5개 특성 % + 수준·설명 |
+| `mbti` | MBTI 성격유형 | 16 | A/B | 16유형 + 축별 쏠림 % |
+| `eq` | EQ 감성지능 | 15 | 1~5 | EQ 종합점수 + 5영역 강·약점 |
+| `stress` | 스트레스/번아웃 | 13 | 1~5 | 스트레스·번아웃 지수 (자가 체크) |
+
+> 성격·정서 테스트 결과는 참고용 자기 이해 도구이며,
+> 스트레스/번아웃 결과는 **의학적 진단이 아닙니다.**
 
 ## 설치
 

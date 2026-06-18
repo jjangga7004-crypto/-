@@ -23,9 +23,11 @@ import { randomUUID } from "node:crypto";
 
 import { getAll, byCategory } from "./questions.js";
 import { scoreSession } from "./scoring.js";
+import { TESTS, listTests, getTest, formatItem, normalizeResponse } from "./assessments/index.js";
 
 const ALL = getAll();
-const sessions = new Map();
+const sessions = new Map();        // IQ 테스트 세션
+const surveys = new Map();         // 자가 테스트(설문) 세션
 const LETTERS = ["A", "B", "C", "D"];
 
 function shuffle(arr) {
@@ -251,6 +253,149 @@ function errText(msg) {
   return { isError: true, content: [{ type: "text", text: msg }] };
 }
 
+// =====================================================================
+//  자가 테스트 (Big Five / MBTI / EQ / 스트레스·번아웃)
+// =====================================================================
+
+// ---- list_self_tests ----
+server.tool(
+  "list_self_tests",
+  "IQ 외에 응시할 수 있는 자가 테스트(성격·정서·스트레스) 목록을 보여줍니다.",
+  {},
+  async () => {
+    const lines = listTests().map(
+      (t) => `• ${t.title}  [id: ${t.id}] · ${t.length}문항\n   ${t.description}`
+    );
+    return {
+      content: [
+        {
+          type: "text",
+          text:
+            "🧪 사용할 수 있는 자가 테스트\n" +
+            "─".repeat(34) +
+            "\n" +
+            lines.join("\n\n") +
+            `\n\nstart_self_test(test_id="...") 로 시작하세요. (그 외 IQ 테스트는 start_iq_test)`,
+        },
+      ],
+    };
+  }
+);
+
+// ---- start_self_test ----
+server.tool(
+  "start_self_test",
+  "성격·정서·스트레스 자가 테스트를 시작합니다. test_id 는 list_self_tests 참고(bigfive, mbti, eq, stress).",
+  {
+    test_id: z.enum(Object.keys(TESTS)).describe("테스트 ID (bigfive | mbti | eq | stress)"),
+    name: z.string().optional().describe("응시자 이름(선택)"),
+  },
+  async ({ test_id, name }) => {
+    const test = getTest(test_id);
+    if (!test) return errText(`'${test_id}' 테스트가 없습니다. list_self_tests 를 확인하세요.`);
+    const id = randomUUID().slice(0, 8);
+    const session = { id, testId: test_id, answers: [], cursor: 0, finished: false, name: name ?? "응시자" };
+    surveys.set(id, session);
+
+    const header = [
+      `${test.emoji} ${test.title} 시작 (${session.name}님)`,
+      `세션 ID: ${id} · 총 ${test.items.length}문항`,
+      test.intro,
+      "",
+    ].join("\n");
+    return {
+      content: [
+        {
+          type: "text",
+          text:
+            header +
+            formatItem(test, 0) +
+            `\n\n답: answer_self_test(session_id="${id}", response=...)`,
+        },
+      ],
+    };
+  }
+);
+
+// ---- answer_self_test ----
+server.tool(
+  "answer_self_test",
+  "자가 테스트 문항에 답합니다. 리커트형은 1~5, 양자택일형(MBTI)은 'A'/'B'. 다음 문항 또는 최종 결과를 반환합니다.",
+  {
+    session_id: z.string().describe("start_self_test 가 반환한 세션 ID"),
+    response: z.string().describe("리커트: '1'~'5' / 양자택일: 'A' 또는 'B'"),
+  },
+  async ({ session_id, response }) => {
+    const session = surveys.get(session_id);
+    if (!session) return errText(`세션 '${session_id}' 없음. start_self_test 로 시작하세요.`);
+    const test = getTest(session.testId);
+    if (session.finished)
+      return { content: [{ type: "text", text: "이미 종료된 테스트입니다.\n\n" + surveyResult(test, session) }] };
+
+    const val = normalizeResponse(test, response);
+    if (val == null) {
+      const hint = test.scale === "ab" ? "'A' 또는 'B'" : "'1'~'5'";
+      return errText(`응답이 올바르지 않습니다. ${hint} 중 하나로 답하세요.`);
+    }
+
+    session.answers[session.cursor] = val;
+    session.cursor += 1;
+
+    if (session.cursor >= test.items.length) {
+      session.finished = true;
+      return { content: [{ type: "text", text: surveyResult(test, session) }] };
+    }
+    return {
+      content: [
+        {
+          type: "text",
+          text:
+            `(${session.cursor}/${test.items.length} 완료)\n\n` +
+            formatItem(test, session.cursor) +
+            `\n\n답: answer_self_test(session_id="${session.id}", response=...)`,
+        },
+      ],
+    };
+  }
+);
+
+// ---- self_test_status ----
+server.tool(
+  "self_test_status",
+  "진행 중인 자가 테스트의 현재 문항과 진행률을 보여줍니다.",
+  { session_id: z.string().describe("세션 ID") },
+  async ({ session_id }) => {
+    const session = surveys.get(session_id);
+    if (!session) return errText(`세션 '${session_id}' 없음.`);
+    const test = getTest(session.testId);
+    if (session.finished) return { content: [{ type: "text", text: surveyResult(test, session) }] };
+    return {
+      content: [
+        {
+          type: "text",
+          text: `진행: ${session.cursor}/${test.items.length} 완료\n\n` + formatItem(test, session.cursor),
+        },
+      ],
+    };
+  }
+);
+
+function surveyResult(test, session) {
+  // 미응답 문항은 중립값(리커트 3, MBTI 'A')으로 채워 부분 채점
+  const filled = test.items.map((_, i) =>
+    session.answers[i] != null ? session.answers[i] : test.scale === "ab" ? "A" : 3
+  );
+  const answeredCount = session.answers.filter((a) => a != null).length;
+  const r = test.score(filled);
+  const note =
+    answeredCount < test.items.length
+      ? `\n(※ ${test.items.length - answeredCount}개 미응답분은 중립값으로 처리한 부분 결과입니다.)`
+      : "";
+  return [r.headline, "─".repeat(34), ...r.lines, note].join("\n");
+}
+
 const transport = new StdioServerTransport();
 await server.connect(transport);
-console.error(`[iq-test] MCP server running on stdio (${ALL.length} questions)`);
+console.error(
+  `[iq-test] MCP server running on stdio (IQ ${ALL.length}문항 + 자가테스트 ${Object.keys(TESTS).length}종)`
+);
