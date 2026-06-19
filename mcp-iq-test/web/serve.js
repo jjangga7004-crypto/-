@@ -25,7 +25,7 @@ const MIME = {
 const server = http.createServer(async (req, res) => {
   try {
     let urlPath = decodeURIComponent(new URL(req.url, "http://x").pathname);
-    if (urlPath === "/") urlPath = "/web/index.html";
+    if (urlPath === "/") urlPath = "/index.html";
     // 디렉터리 탈출 방지
     const filePath = path.normalize(path.join(ROOT, urlPath));
     if (!filePath.startsWith(ROOT)) {

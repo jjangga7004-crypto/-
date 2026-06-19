@@ -27,8 +27,9 @@ figures.js        도형(figural) 문제용 SVG 문자열
 scoring.js        IQ 채점 (난이도 가중 + 속도 보너스 → 추정 IQ, scoreSession)
 server.js         MCP 서버 — 모든 도구 정의 (stdio)
 selftest.js       의존성 없는 자체 테스트 (npm test)
+index.html        홈페이지 진입점(루트). 정적 호스트/ GitHub Pages 에서 바로 열림.
 web/
-  index.html style.css
+  style.css
   app.js          홈 그리드 + 각 테스트 러너 + 통합 결과 화면(showResult)
   charts.js       순수 SVG 차트(레이더·게이지·도넛·막대·대립막대·사분면)
   share.js        결과 PNG 카드(SVG→canvas) + URL 해시 공유 링크

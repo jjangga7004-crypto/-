@@ -79,6 +79,9 @@
 npm run web      # http://localhost:5173 (의존성 없는 정적 서버)
 ```
 
+진입점은 루트 `index.html` 이고 자산 경로가 모두 상대경로라, 정적 호스트나
+GitHub Pages 에 그대로 올려도 동작합니다(서버 없이 파일만 서빙하면 됨).
+
 `web/` 의 페이지는 MCP 서버와 **완전히 동일한 채점 모듈**(`assessments/*`, `questions.js`, `scoring.js`)을
 브라우저에서 ES module 로 직접 import 합니다. 모든 계산은 사용자의 기기에서만 일어나며 서버로 전송되지 않습니다.
 
