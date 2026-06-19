@@ -1,7 +1,7 @@
 {
   "name": "mcp-iq-test",
   "version": "1.0.0",
-  "description": "MCP server providing an interactive IQ test tool (stdio).",
+  "description": "IQ·성격·정서 등 13종 자가 테스트를 제공하는 MCP 서버. Claude가 대화로 문제를 내고 채점하며, 같은 로직을 쓰는 웹 홈페이지(npm run web)도 포함.",
   "type": "module",
   "bin": {
     "mcp-iq-test": "server.js"
