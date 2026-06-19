@@ -1,0 +1,22 @@
+{
+  "name": "mcp-iq-test",
+  "version": "1.0.0",
+  "description": "IQ·성격·정서 등 13종 자가 테스트를 제공하는 MCP 서버. Claude가 대화로 문제를 내고 채점하며, 같은 로직을 쓰는 웹 홈페이지(npm run web)도 포함.",
+  "type": "module",
+  "bin": {
+    "mcp-iq-test": "server.js"
+  },
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js",
+    "test": "node selftest.js",
+    "web": "node web/serve.js"
+  },
+  "engines": {
+    "node": ">=18"
+  },
+  "dependencies": {
+    "@modelcontextprotocol/sdk": "^1.29.0",
+    "zod": "^3.23.8"
+  }
+}
